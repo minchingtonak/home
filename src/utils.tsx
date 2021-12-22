@@ -94,10 +94,10 @@ export const Checkbox = styled.i.attrs<CheckboxProps>((props) => ({
 
   transform: scale(1.35);
 
-  color: var(--frg-l);
+  color: var(--frg);
 
   &:hover {
-    color: var(--frg-ll);
+    color: var(--frg-l);
   }
 `;
 

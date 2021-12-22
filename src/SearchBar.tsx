@@ -1,3 +1,4 @@
+import dayjs from 'dayjs';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import DayPicker from 'react-day-picker';
 import styled from 'styled-components';
@@ -55,11 +56,13 @@ export default function SearchBar({
   setText: (s: string) => void;
   action: option<string>;
 }) {
-  const input = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [taskText, setTaskText] = useState<option<string>>(null);
   const { addTask } = useAddTask();
   const { loggedIn, logOut, logIn } = useGoogleAPI();
+  const [selectedDay, setSelectedDay] = useState<Date>(new Date());
+  const calRef = useRef<DayPicker | null>(null);
 
   // useEffect(() => {
   //   // Clikcing on anything except a link will focus the search bar
@@ -94,10 +97,47 @@ export default function SearchBar({
   }, [updateTitle]);
 
   useEffect(() => {
-    window.addEventListener('keydown', (e) => {
+    function updateDate(value: number, unit: dayjs.OpUnitType) {
+      if (!selectedDay)
+        setSelectedDay(dayjs(new Date()).add(value, unit).toDate());
+      else setSelectedDay(dayjs(selectedDay).add(value, unit).toDate());
+    }
+    const listener = (e: KeyboardEvent) => {
       if (e.key === 'Escape') setPickerOpen(false);
-    });
+      if (pickerOpen) {
+        if (e.key === 'a') {
+          e.preventDefault();
+          updateDate(-1, 'day');
+        } else if (e.key === 'd') {
+          e.preventDefault();
+          updateDate(1, 'day');
+        } else if (e.key === 'w') {
+          e.preventDefault();
+          updateDate(-1, 'week');
+        } else if (e.key === 's') {
+          e.preventDefault();
+          updateDate(1, 'week');
+        } else if (e.key === 'Enter') {
+          e.preventDefault();
+          if (taskText !== null && selectedDay) {
+            addTask({ title: taskText, due: selectedDay.toISOString() });
+            setText('');
+            setPickerOpen(false);
+            inputRef.current?.focus();
+          }
+        }
+      }
+    };
+    window.addEventListener('keydown', listener);
+
+    return () => {
+      window.removeEventListener('keydown', listener);
+    };
   });
+
+  useEffect(() => {
+    console.log(selectedDay);
+  }, [selectedDay]);
 
   return (
     <>
@@ -110,6 +150,10 @@ export default function SearchBar({
             const matches = text.match(/[\s].*/g);
             setTaskText(matches !== null ? matches[0].trim() : null);
             setPickerOpen(true);
+            setSelectedDay(new Date());
+            setTimeout(() => {
+              calRef.current?.focus();
+            }, 10);
           } else if (/^\/login/.test(text)) {
             if (loggedIn) return;
             logIn();
@@ -131,15 +175,23 @@ export default function SearchBar({
         <SearchInput
           type="text"
           value={text}
-          ref={input}
+          ref={inputRef}
           autoFocus
           autoComplete="off"
           onChange={(e) => setText(e.target.value)}
         />
       </form>
       <SearchDatePicker
-        selectedDays={new Date()}
+        ref={calRef}
+        selectedDays={selectedDay}
         open={pickerOpen}
+        // onBlur={(e) => {
+        //   if (taskText !== null && selectedDay) {
+        //     addTask({ title: taskText, due: selectedDay.toISOString() });
+        //     setText('');
+        //     setPickerOpen(false);
+        //   }
+        // }}
         onDayClick={(d) => {
           if (taskText !== null && d) {
             addTask({ title: taskText, due: d.toISOString() });
