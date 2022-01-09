@@ -5,7 +5,6 @@ import {
   useEffect,
   useState,
 } from 'react';
-import qs from 'querystring';
 import create from 'zustand';
 import { Task } from './config';
 import styled from 'styled-components';
@@ -40,36 +39,37 @@ export function useCached<T>(
   return [data, setData];
 }
 
-function parseQueryString(queryString = window.location.search) {
-  const values = qs.parse(queryString);
+// function parseQueryString(queryString = window.location.search) {
+//   const values = qs.parse(queryString);
 
-  // Remove leading qmark from first query param
-  const qmarkKey = Object.keys(values).find((elt) => elt.startsWith('?'));
-  if (qmarkKey) {
-    const tmp = values[qmarkKey];
-    delete values[qmarkKey];
-    values[qmarkKey.slice(1)] = tmp;
-  }
-  return values;
-}
+//   // Remove leading qmark from first query param
+//   const qmarkKey = Object.keys(values).find((elt) => elt.startsWith('?'));
+//   if (qmarkKey) {
+//     const tmp = values[qmarkKey];
+//     delete values[qmarkKey];
+//     values[qmarkKey.slice(1)] = tmp;
+//   }
+//   return values;
+// }
 
 function setQueryString(key: string, value: any) {
-  const parsed = parseQueryString();
-  if (key in parsed && !value) delete parsed[key];
-  else parsed[key] = value;
+  const parsed = new URLSearchParams(window.location.search);
+  if (parsed.has(key) && !value) parsed.delete(key);
+  else parsed.set(key, JSON.stringify(value));
 
+  const params = parsed.toString();
   const newurl =
     window.location.protocol +
     '//' +
     window.location.host +
     window.location.pathname +
-    `${Object.keys(parsed).length ? '?' : ''}${qs.stringify(parsed)}`;
+    `${params.length ? '?' : ''}${params}`;
 
   window.history.pushState({ path: newurl }, '', newurl);
 }
 
 function getQueryStringValue(key: string) {
-  return parseQueryString()[key];
+  return new URLSearchParams(window.location.search).get('key');
 }
 
 export function useQueryString(key: string, initialValue: any) {
@@ -101,7 +101,9 @@ export const Checkbox = styled.i.attrs<CheckboxProps>((props) => ({
   }
 `;
 
-export const TrashIcon = styled.i.attrs({ className: 'far fa-trash-alt fa-lg' })`
+export const TrashIcon = styled.i.attrs({
+  className: 'far fa-trash-alt fa-lg',
+})`
   padding: 13px 10px;
 
   color: var(--frg-l);
